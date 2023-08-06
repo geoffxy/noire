@@ -1,0 +1,12 @@
+.DS_Store
+*.swp
+.idea
+.vscode
+.python-version
+
+*.pyc
+__pycache__
+src/noire.egg-info
+.mypy_cache
+build
+dist
