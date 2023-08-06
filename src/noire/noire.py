@@ -1,14 +1,18 @@
 import requests
-from typing import List
+from typing import List, Optional
 
 from noire.constants import (
     LOG_IN_URL_TEMPLATE,
     GET_MEMBERS_LIST_URL_TEMPLATE,
     MODERATION_REQUESTS_URL_TEMPLATE,
+    MODERATION_DETAILS_URL_TEMPLATE,
 )
-from noire.models.moderation import ModerationRequest
+from noire.models.moderation import ModerationRequest, ModerationDetails
 from noire.parsers.members_list import extract_member_emails
-from noire.parsers.moderation import extract_moderation_requests
+from noire.parsers.moderation import (
+    extract_moderation_requests,
+    extract_moderation_post_details,
+)
 
 
 class Noire:
@@ -74,3 +78,16 @@ class Noire:
                 f"Unexpected error when fetching moderation requests: {response.status_code}"
             )
         return extract_moderation_requests(response.content.decode())
+
+    def get_moderation_details(self, message_id: int) -> Optional[ModerationDetails]:
+        get_url = MODERATION_DETAILS_URL_TEMPLATE.format(
+            mailman_base_url=self._mailman_base_url,
+            list_name=self._list_name,
+            message_id=message_id,
+        )
+        response = self._session.get(get_url)
+        if response.status_code != 200:
+            raise RuntimeError(
+                f"Unexpected error when fetching moderation details for {message_id}: {response.status_code}"
+            )
+        return extract_moderation_post_details(message_id, response.content.decode())

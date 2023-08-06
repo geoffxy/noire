@@ -1,8 +1,8 @@
 from bs4 import BeautifulSoup
-from typing import List
+from typing import List, Optional
 from datetime import datetime
 
-from noire.models.moderation import ModerationRequest
+from noire.models.moderation import ModerationRequest, ModerationDetails
 
 
 def extract_moderation_requests(raw_html: str) -> List[ModerationRequest]:
@@ -45,3 +45,24 @@ def extract_moderation_requests(raw_html: str) -> List[ModerationRequest]:
         )
 
     return results
+
+
+def extract_moderation_post_details(
+    message_id: int, raw_html: str
+) -> Optional[ModerationDetails]:
+    soup = BeautifulSoup(raw_html, "html.parser")
+
+    excerpt_heading = soup.find("strong", string="Message Excerpt:")
+    if excerpt_heading is None:
+        # This indicates that there is no such post (held for moderation).
+        return None
+
+    excerpt_wrap = excerpt_heading.parent.parent.find("textarea")  # type: ignore
+    message_contents = excerpt_wrap.contents[0].text  # type: ignore
+
+    headers_heading = soup.find("strong", string="Message Headers:")
+    assert headers_heading is not None, "Moderation details HTML structure has changed."
+    headers_wrap = headers_heading.parent.parent.find("textarea")  # type: ignore
+    headers = headers_wrap.contents[0].text  # type: ignore
+
+    return ModerationDetails(message_id, message_contents, headers)
