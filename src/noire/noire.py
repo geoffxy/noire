@@ -7,11 +7,14 @@ from noire.constants import (
     MODERATION_REQUESTS_URL_TEMPLATE,
     MODERATION_DETAILS_URL_TEMPLATE,
     ADD_MEMBERS_URL_TEMPLATE,
+    REMOVE_MEMBERS_URL_TEMPLATE,
 )
+from noire.models.membership import BulkRemoveResults
 from noire.models.moderation import ModerationRequest, ModerationDetails
 from noire.parsers.members_list import (
     extract_member_emails,
     extract_successfully_subscribed_emails,
+    extract_remove_results,
 )
 from noire.parsers.moderation import (
     extract_moderation_requests,
@@ -21,7 +24,7 @@ from noire.parsers.moderation import (
 
 class Noire:
     """
-    Provides programmatic access to Mailman via its web user interface.
+    Provides programmatic access to Mailman 2 via its web user interface.
 
     This tool is meant to be a modern successor to "mmblanche".
     """
@@ -109,7 +112,7 @@ class Noire:
             )
         return extract_moderation_post_details(message_id, response.content.decode())
 
-    def add_subscribers(self, emails: List[str]) -> Tuple[List[str], List[str]]:
+    def add_members(self, emails: List[str]) -> Tuple[List[str], List[str]]:
         """
         Subscribes the given emails to the list. Returns the emails that were
         successfully subscribed and the emails that failed to be subscribed.
@@ -124,5 +127,17 @@ class Noire:
         response = self._session.post(endpoint, payload)
         return extract_successfully_subscribed_emails(response.content.decode())
 
-    def remove_subscribers(self, emails: List[str]) -> None:
-        pass
+    def remove_members(self, emails: List[str]) -> BulkRemoveResults:
+        """
+        Unsubscribes the given emails from the list. Returns the emails that were
+        successfully removed.
+        """
+        endpoint = REMOVE_MEMBERS_URL_TEMPLATE.format(
+            mailman_base_url=self._mailman_base_url, list_name=self._list_name
+        )
+        payload = {
+            "adminpw": self._list_password,
+            "unsubscribees": "\n".join(emails),
+        }
+        response = self._session.post(endpoint, payload)
+        return extract_remove_results(response.content.decode())

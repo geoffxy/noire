@@ -1,6 +1,8 @@
 from bs4 import BeautifulSoup
 from typing import List, Tuple
 
+from noire.models.membership import BulkRemoveResults
+
 
 def extract_member_emails(raw_html: str) -> List[str]:
     """
@@ -58,3 +60,19 @@ def extract_successfully_subscribed_emails(
         error_emails = []
 
     return success_emails, error_emails
+
+
+def extract_remove_results(raw_html: str) -> BulkRemoveResults:
+    soup = BeautifulSoup(raw_html, "html.parser")
+
+    # Extract emails under "Successfully unsubscribed"
+    success_removed = soup.find("h5", string="Successfully Unsubscribed:")
+    if success_removed is not None:
+        removed = [
+            li.get_text(strip=True)
+            for li in success_removed.find_next("ul").find_all("li")  # type: ignore
+        ]
+    else:
+        removed = []
+
+    return BulkRemoveResults(removed)
