@@ -42,10 +42,9 @@ def extract_add_results(
     # Extract emails under "Successfully subscribed"
     success_subscribing = soup.find("h5", string="Successfully subscribed:")
     if success_subscribing is not None:
-        success_emails = [
-            li.get_text(strip=True)
-            for li in success_subscribing.find_next("ul").find_all("li")  # type: ignore
-        ]
+        success_emails = _extract_from_malformed_li(
+            success_subscribing.find_next("ul").decode_contents()  # type: ignore
+        )
     else:
         success_emails = []
 
@@ -54,8 +53,11 @@ def extract_add_results(
     error_emails = []
 
     if error_subscribing is not None:
-        for li in error_subscribing.find_next("ul").find_all("li"):  # type: ignore
-            parts = li.get_text(strip=True).split(" -- ")
+        cleaned_errors = _extract_from_malformed_li(
+            error_subscribing.find_next("ul").decode_contents()  # type: ignore
+        )
+        for item in cleaned_errors:
+            parts = item.split(" -- ")
             if len(parts) > 1:
                 error_emails.append(MemberError(parts[0], parts[1]))
             else:
@@ -70,11 +72,23 @@ def extract_remove_results(raw_html: str) -> BulkRemoveResults:
     # Extract emails under "Successfully unsubscribed"
     success_removed = soup.find("h5", string="Successfully Unsubscribed:")
     if success_removed is not None:
-        removed = [
-            li.get_text(strip=True)
-            for li in success_removed.find_next("ul").find_all("li")  # type: ignore
-        ]
+        removed = _extract_from_malformed_li(
+            success_removed.find_next("ul").decode_contents()  # type: ignore
+        )
     else:
         removed = []
 
     return BulkRemoveResults(removed)
+
+
+def _extract_from_malformed_li(raw_content: str) -> List[str]:
+    # Mailman's lists are malformed (they are missing </li> tags). This function
+    # works around the malformed HTML and extracts the intended list items.
+    remove_trailing_li = raw_content.replace("</li>", "")
+    items = []
+    for piece in remove_trailing_li.split("<li>"):
+        clean = piece.strip()
+        if len(clean) == 0:
+            continue
+        items.append(clean)
+    return items
