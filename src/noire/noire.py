@@ -1,5 +1,5 @@
 import requests
-from typing import List, Optional, Tuple
+from typing import List, Optional
 
 from noire.constants import (
     LOG_IN_URL_TEMPLATE,
@@ -9,11 +9,11 @@ from noire.constants import (
     ADD_MEMBERS_URL_TEMPLATE,
     REMOVE_MEMBERS_URL_TEMPLATE,
 )
-from noire.models.membership import BulkRemoveResults
+from noire.models.membership import BulkAddResults, BulkRemoveResults
 from noire.models.moderation import ModerationRequest, ModerationDetails
 from noire.parsers.members_list import (
     extract_member_emails,
-    extract_successfully_subscribed_emails,
+    extract_add_results,
     extract_remove_results,
 )
 from noire.parsers.moderation import (
@@ -112,7 +112,7 @@ class Noire:
             )
         return extract_moderation_post_details(message_id, response.content.decode())
 
-    def add_members(self, emails: List[str]) -> Tuple[List[str], List[str]]:
+    def add_members(self, emails: List[str]) -> BulkAddResults:
         """
         Subscribes the given emails to the list. Returns the emails that were
         successfully subscribed and the emails that failed to be subscribed.
@@ -125,7 +125,7 @@ class Noire:
             "subscribees": "\n".join(emails),
         }
         response = self._session.post(endpoint, payload)
-        return extract_successfully_subscribed_emails(response.content.decode())
+        return extract_add_results(response.content.decode())
 
     def remove_members(self, emails: List[str]) -> BulkRemoveResults:
         """

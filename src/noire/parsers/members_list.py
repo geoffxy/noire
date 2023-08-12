@@ -1,7 +1,7 @@
 from bs4 import BeautifulSoup
-from typing import List, Tuple
+from typing import List
 
-from noire.models.membership import BulkRemoveResults
+from noire.models.membership import BulkAddResults, MemberError, BulkRemoveResults
 
 
 def extract_member_emails(raw_html: str) -> List[str]:
@@ -34,9 +34,9 @@ def extract_member_emails(raw_html: str) -> List[str]:
     return member_emails
 
 
-def extract_successfully_subscribed_emails(
+def extract_add_results(
     raw_html: str,
-) -> Tuple[List[str], List[str]]:
+) -> BulkAddResults:
     soup = BeautifulSoup(raw_html, "html.parser")
 
     # Extract emails under "Successfully subscribed"
@@ -51,15 +51,17 @@ def extract_successfully_subscribed_emails(
 
     # Extract emails under "Error subscribing"
     error_subscribing = soup.find("h5", string="Error subscribing:")
-    if error_subscribing is not None:
-        error_emails = [
-            li.get_text(strip=True).split(" -- ")[0]
-            for li in error_subscribing.find_next("ul").find_all("li")  # type: ignore
-        ]
-    else:
-        error_emails = []
+    error_emails = []
 
-    return success_emails, error_emails
+    if error_subscribing is not None:
+        for li in error_subscribing.find_next("ul").find_all("li"):  # type: ignore
+            parts = li.get_text(strip=True).split(" -- ")
+            if len(parts) > 1:
+                error_emails.append(MemberError(parts[0], parts[1]))
+            else:
+                error_emails.append(MemberError(parts[0], None))
+
+    return BulkAddResults(success_emails, error_emails)
 
 
 def extract_remove_results(raw_html: str) -> BulkRemoveResults:
