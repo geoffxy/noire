@@ -1,12 +1,9 @@
 LOG_IN_URL_TEMPLATE = "{mailman_base_url}/admin/{list_name}"
 
-# Used for fetching data
 GET_MEMBERS_LIST_URL_TEMPLATE = "{mailman_base_url}/admin/{list_name}/members"
 MODERATION_REQUESTS_URL_TEMPLATE = "{mailman_base_url}/admindb/{list_name}"
 MODERATION_DETAILS_URL_TEMPLATE = (
     "{mailman_base_url}/admindb/{list_name}?msgid={message_id}"
 )
-
-# Used for POST requests
 ADD_MEMBERS_URL_TEMPLATE = "{mailman_base_url}/admin/{list_name}/members/add"
 REMOVE_MEMBERS_URL_TEMPLATE = "{mailman_base_url}/admin/{list_name}/members/remove"

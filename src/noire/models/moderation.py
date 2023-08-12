@@ -1,3 +1,4 @@
+import enum
 from datetime import datetime
 
 
@@ -28,3 +29,14 @@ class ModerationDetails:
         self.message_id = message_id
         self.message_contents = message_contents
         self.headers = headers
+
+
+class ModerationAction(enum.Enum):
+    # NOTE: The values are significant; they correspond to values used by
+    # Mailman to represent these actions.
+
+    # Defer is a no-op. We include it for completeness.
+    Defer = 0
+    Approve = 1
+    Reject = 2
+    Discard = 3

@@ -10,7 +10,11 @@ from noire.constants import (
     REMOVE_MEMBERS_URL_TEMPLATE,
 )
 from noire.models.membership import BulkAddResults, BulkRemoveResults
-from noire.models.moderation import ModerationRequest, ModerationDetails
+from noire.models.moderation import (
+    ModerationRequest,
+    ModerationDetails,
+    ModerationAction,
+)
 from noire.parsers.members_list import (
     extract_member_emails,
     extract_add_results,
@@ -111,6 +115,41 @@ class Noire:
                 f"Unexpected error when fetching moderation details for {message_id}: {response.status_code}"
             )
         return extract_moderation_post_details(message_id, response.content.decode())
+
+    def apply_moderation_action(
+        self,
+        message_id: int,
+        action: ModerationAction,
+        rejection_message: Optional[str] = None,
+        preserve_message_for_admin: bool = False,
+        forward_message_to_list_owner: bool = False,
+    ) -> bool:
+        """
+        Applies a moderation action to a message (defer, reject, approve,
+        discard). This method returns true if the moderation action request was
+        successfully submitted. The `message_id` should correspond to a message
+        ID retrieved from `get_moderation_requests()`.
+
+        If a message is rejected, Mailman will send a rejection reason to the
+        sender. You can customize this reason with `rejection_message`. If you
+        do not set a rejection message, Mailman will use a default message.
+        """
+
+        endpoint = MODERATION_REQUESTS_URL_TEMPLATE.format(
+            mailman_base_url=self._mailman_base_url, list_name=self._list_name
+        )
+        payload = {
+            "adminpw": self._list_password,
+            message_id: action.value,
+        }
+        if action == ModerationAction.Reject and rejection_message is not None:
+            payload[f"comment-{message_id}"] = rejection_message
+        if preserve_message_for_admin:
+            payload[f"preserve-{message_id}"] = "on"
+        if forward_message_to_list_owner:
+            payload[f"forward-{message_id}"] = "on"
+        response = self._session.post(endpoint, payload)
+        return response.status_code == 200
 
     def add_members(
         self,
