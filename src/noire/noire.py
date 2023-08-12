@@ -112,10 +112,21 @@ class Noire:
             )
         return extract_moderation_post_details(message_id, response.content.decode())
 
-    def add_members(self, emails: List[str]) -> BulkAddResults:
+    def add_members(
+        self,
+        emails: List[str],
+        send_welcome_message: bool = False,
+        send_owner_notifications: bool = False,
+    ) -> BulkAddResults:
         """
         Subscribes the given emails to the list. Returns the emails that were
         successfully subscribed and the emails that failed to be subscribed.
+
+        Optional arguments:
+        - send_welcome_message:      Set to notify the new member that they were
+                                     added.
+        - send_owner_notifications:  Send an email to the list owner about the new
+                                     members.
         """
         endpoint = ADD_MEMBERS_URL_TEMPLATE.format(
             mailman_base_url=self._mailman_base_url, list_name=self._list_name
@@ -123,14 +134,27 @@ class Noire:
         payload = {
             "adminpw": self._list_password,
             "subscribees": "\n".join(emails),
+            "subscribe_or_invite": 0,  # 0 indicates subscribe.
+            "send_welcome_msg_to_this_batch": 1 if send_welcome_message else 0,
+            "send_notifications_to_list_owner": 1 if send_owner_notifications else 0,
         }
         response = self._session.post(endpoint, payload)
         return extract_add_results(response.content.decode())
 
-    def remove_members(self, emails: List[str]) -> BulkRemoveResults:
+    def remove_members(
+        self,
+        emails: List[str],
+        send_unsubscribe_message: bool = False,
+        send_owner_notifications: bool = False,
+    ) -> BulkRemoveResults:
         """
         Unsubscribes the given emails from the list. Returns the emails that were
         successfully removed.
+
+        Optional arguments:
+        - send_unsubscribe_message: Set to notify the member that they were removed.
+        - send_owner_notifications: Send an email to the list owner about the removed
+                                    members.
         """
         endpoint = REMOVE_MEMBERS_URL_TEMPLATE.format(
             mailman_base_url=self._mailman_base_url, list_name=self._list_name
@@ -138,6 +162,10 @@ class Noire:
         payload = {
             "adminpw": self._list_password,
             "unsubscribees": "\n".join(emails),
+            "send_unsub_ack_to_this_batch": 1 if send_unsubscribe_message else 0,
+            "send_unsub_notifications_to_list_owner": 1
+            if send_owner_notifications
+            else 0,
         }
         response = self._session.post(endpoint, payload)
         return extract_remove_results(response.content.decode())
