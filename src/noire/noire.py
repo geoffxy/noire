@@ -1,14 +1,18 @@
 import requests
-from typing import List, Optional
+from typing import List, Optional, Tuple
 
 from noire.constants import (
     LOG_IN_URL_TEMPLATE,
     GET_MEMBERS_LIST_URL_TEMPLATE,
     MODERATION_REQUESTS_URL_TEMPLATE,
     MODERATION_DETAILS_URL_TEMPLATE,
+    ADD_MEMBERS_URL_TEMPLATE,
 )
 from noire.models.moderation import ModerationRequest, ModerationDetails
-from noire.parsers.members_list import extract_member_emails
+from noire.parsers.members_list import (
+    extract_member_emails,
+    extract_successfully_subscribed_emails,
+)
 from noire.parsers.moderation import (
     extract_moderation_requests,
     extract_moderation_post_details,
@@ -44,19 +48,24 @@ class Noire:
                 f"Error authenticating to list {list_name}: {response.status_code}"
             )
 
-        return cls(list_name, mailman_base_url, session)
+        return cls(list_name, mailman_base_url, list_password, session)
 
     def __init__(
         self,
         list_name: str,
         mailman_base_url: str,
+        list_password: str,
         session: requests.Session,
     ) -> None:
         self._list_name = list_name
         self._mailman_base_url = mailman_base_url
+        self._list_password = list_password
         self._session = session
 
     def get_member_emails(self) -> List[str]:
+        """
+        Retrieves all emails that are subscribed to the list.
+        """
         get_url = GET_MEMBERS_LIST_URL_TEMPLATE.format(
             list_name=self._list_name, mailman_base_url=self._mailman_base_url
         )
@@ -69,6 +78,10 @@ class Noire:
         return extract_member_emails(response.content.decode())
 
     def get_moderation_requests(self) -> List[ModerationRequest]:
+        """
+        Retrieves moderation requests for the list (i.e., emails sent to the
+        list that are held for moderation).
+        """
         get_url = MODERATION_REQUESTS_URL_TEMPLATE.format(
             list_name=self._list_name, mailman_base_url=self._mailman_base_url
         )
@@ -80,6 +93,10 @@ class Noire:
         return extract_moderation_requests(response.content.decode())
 
     def get_moderation_details(self, message_id: int) -> Optional[ModerationDetails]:
+        """
+        Retrieves details about a message held for moderation (e.g., the
+        message's contents).
+        """
         get_url = MODERATION_DETAILS_URL_TEMPLATE.format(
             mailman_base_url=self._mailman_base_url,
             list_name=self._list_name,
@@ -91,3 +108,21 @@ class Noire:
                 f"Unexpected error when fetching moderation details for {message_id}: {response.status_code}"
             )
         return extract_moderation_post_details(message_id, response.content.decode())
+
+    def add_subscribers(self, emails: List[str]) -> Tuple[List[str], List[str]]:
+        """
+        Subscribes the given emails to the list. Returns the emails that were
+        successfully subscribed and the emails that failed to be subscribed.
+        """
+        endpoint = ADD_MEMBERS_URL_TEMPLATE.format(
+            mailman_base_url=self._mailman_base_url, list_name=self._list_name
+        )
+        payload = {
+            "adminpw": self._list_password,
+            "subscribees": "\n".join(emails),
+        }
+        response = self._session.post(endpoint, payload)
+        return extract_successfully_subscribed_emails(response.content.decode())
+
+    def remove_subscribers(self, emails: List[str]) -> None:
+        pass

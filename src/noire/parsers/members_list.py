@@ -1,5 +1,5 @@
 from bs4 import BeautifulSoup
-from typing import List
+from typing import List, Tuple
 
 
 def extract_member_emails(raw_html: str) -> List[str]:
@@ -30,3 +30,31 @@ def extract_member_emails(raw_html: str) -> List[str]:
             member_emails.append(email)
 
     return member_emails
+
+
+def extract_successfully_subscribed_emails(
+    raw_html: str,
+) -> Tuple[List[str], List[str]]:
+    soup = BeautifulSoup(raw_html, "html.parser")
+
+    # Extract emails under "Successfully subscribed"
+    success_subscribing = soup.find("h5", string="Successfully subscribed:")
+    if success_subscribing is not None:
+        success_emails = [
+            li.get_text(strip=True)
+            for li in success_subscribing.find_next("ul").find_all("li")  # type: ignore
+        ]
+    else:
+        success_emails = []
+
+    # Extract emails under "Error subscribing"
+    error_subscribing = soup.find("h5", string="Error subscribing:")
+    if error_subscribing is not None:
+        error_emails = [
+            li.get_text(strip=True).split(" -- ")[0]
+            for li in error_subscribing.find_next("ul").find_all("li")  # type: ignore
+        ]
+    else:
+        error_emails = []
+
+    return success_emails, error_emails
