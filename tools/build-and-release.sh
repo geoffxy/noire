@@ -76,12 +76,12 @@ function check_repo_for_release() {
     exit 1
   fi
 
-  # Make sure we're on master
-  MASTER_HASH=$(git rev-parse master)
+  # Make sure we're on main
+  MASTER_HASH=$(git rev-parse main)
   CURR_HASH=$(git rev-parse HEAD)
 
   if [[ $MASTER_HASH != $CURR_HASH ]]; then
-    echo_red "ERROR: You must be on master when releasing."
+    echo_red "ERROR: You must be on main when releasing."
     exit 1
   fi
 
