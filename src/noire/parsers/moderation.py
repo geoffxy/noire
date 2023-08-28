@@ -2,7 +2,7 @@ from bs4 import BeautifulSoup
 from typing import List, Optional
 from datetime import datetime
 
-from noire.models.moderation import ModerationRequest, ModerationDetails
+from noire.models.moderation import ModerationRequest, ModerationRequestDetails
 
 
 def extract_moderation_requests(raw_html: str) -> List[ModerationRequest]:
@@ -49,7 +49,7 @@ def extract_moderation_requests(raw_html: str) -> List[ModerationRequest]:
 
 def extract_moderation_post_details(
     message_id: int, raw_html: str
-) -> Optional[ModerationDetails]:
+) -> Optional[ModerationRequestDetails]:
     soup = BeautifulSoup(raw_html, "html.parser")
 
     excerpt_heading = soup.find("strong", string="Message Excerpt:")
@@ -65,4 +65,8 @@ def extract_moderation_post_details(
     headers_wrap = headers_heading.parent.parent.find("textarea")  # type: ignore
     headers = headers_wrap.contents[0].text  # type: ignore
 
-    return ModerationDetails(message_id, message_contents, headers)
+    return ModerationRequestDetails(
+        message_id=message_id,
+        message_contents=message_contents,
+        message_headers=headers,
+    )

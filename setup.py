@@ -24,6 +24,7 @@ ENTRY_POINTS = {}
 INSTALL_REQUIRES = [
     "beautifulsoup4>=4.12.2",
     "requests",
+    "pydantic",
 ]
 
 DEV_REQUIRES = [

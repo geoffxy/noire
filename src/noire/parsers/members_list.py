@@ -59,11 +59,11 @@ def extract_add_results(
         for item in cleaned_errors:
             parts = item.split(" -- ")
             if len(parts) > 1:
-                error_emails.append(MemberError(parts[0], parts[1]))
+                error_emails.append(MemberError(email=parts[0], error_reason=parts[1]))
             else:
-                error_emails.append(MemberError(parts[0], None))
+                error_emails.append(MemberError(email=parts[0], error_reason=None))
 
-    return BulkAddResults(success_emails, error_emails)
+    return BulkAddResults(added=success_emails, errors=error_emails)
 
 
 def extract_remove_results(raw_html: str) -> BulkRemoveResults:
@@ -78,7 +78,7 @@ def extract_remove_results(raw_html: str) -> BulkRemoveResults:
     else:
         removed = []
 
-    return BulkRemoveResults(removed)
+    return BulkRemoveResults(removed=removed)
 
 
 def _extract_from_malformed_li(raw_content: str) -> List[str]:

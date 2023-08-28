@@ -12,7 +12,7 @@ from noire.constants import (
 from noire.models.membership import BulkAddResults, BulkRemoveResults
 from noire.models.moderation import (
     ModerationRequest,
-    ModerationDetails,
+    ModerationRequestDetails,
     ModerationAction,
 )
 from noire.parsers.members_list import (
@@ -34,7 +34,7 @@ class Noire:
     """
 
     @classmethod
-    def connect(
+    def create_client(
         cls,
         list_name: str,
         list_password: str,
@@ -99,7 +99,9 @@ class Noire:
             )
         return extract_moderation_requests(response.content.decode())
 
-    def get_moderation_details(self, message_id: int) -> Optional[ModerationDetails]:
+    def get_moderation_details(
+        self, message_id: int
+    ) -> Optional[ModerationRequestDetails]:
         """
         Retrieves details about a message held for moderation (e.g., the
         message's contents).
