@@ -1,6 +1,6 @@
 # Noire
 
-Noire is a Python module that provides programmatic access to Mailman via its
+Noire is a Python module that provides programmatic access to Mailman 2 via its
 publicly-accessible web user interface.
 
 Why the name "Noire"? This tool is meant to be a modern successor to
