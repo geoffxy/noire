@@ -8,6 +8,7 @@ from noire.constants import (
     MODERATION_DETAILS_URL_TEMPLATE,
     ADD_MEMBERS_URL_TEMPLATE,
     REMOVE_MEMBERS_URL_TEMPLATE,
+    SYNC_MEMBERS_URL_TEMPLATE,
 )
 from noire.models.membership import BulkAddResults, BulkRemoveResults
 from noire.models.moderation import (
@@ -210,3 +211,21 @@ class Noire:
         }
         response = self._session.post(endpoint, payload)
         return extract_remove_results(response.content.decode())
+
+    def sync_members(self, emails: List[str]) -> bool:
+        """
+        Synchronizes the member list with the provided list of emails.
+
+        Mailman will (i) remove subscribers that are currently subscribed but
+        not in `emails`, and (ii) will subscribe emails that are in `emails` but
+        are not currently subscribed.
+        """
+        endpoint = SYNC_MEMBERS_URL_TEMPLATE.format(
+            mailman_base_url=self._mailman_base_url, list_name=self._list_name
+        )
+        payload = {
+            "adminpw": self._list_password,
+            "memberlist": "\n".join(emails),
+        }
+        response = self._session.post(endpoint, payload)
+        return response.status_code == 200
