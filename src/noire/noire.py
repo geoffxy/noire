@@ -10,7 +10,7 @@ from noire.constants import (
     REMOVE_MEMBERS_URL_TEMPLATE,
     SYNC_MEMBERS_URL_TEMPLATE,
 )
-from noire.models.membership import BulkAddResults, BulkRemoveResults
+from noire.models.membership import BulkAddResults, BulkRemoveResults, MemberSettings
 from noire.models.moderation import (
     ModerationRequest,
     ModerationRequestDetails,
@@ -20,6 +20,7 @@ from noire.parsers.members_list import (
     extract_member_emails,
     extract_add_results,
     extract_remove_results,
+    extract_member_settings,
 )
 from noire.parsers.moderation import (
     extract_moderation_requests,
@@ -248,3 +249,28 @@ class Noire:
         }
         response = self._session.post(endpoint, payload)
         return response.status_code == 200
+
+    def get_member_subscription_settings(self, email: str) -> Optional[MemberSettings]:
+        """
+        Retrieves a member's subscription settings. If the provided email is not
+        subscribed to this list, this method will return `None`.
+        """
+        endpoint = MEMBERS_LIST_URL_TEMPLATE.format(
+            mailman_base_url=self._mailman_base_url, list_name=self._list_name
+        )
+        payload = {
+            "findmember": email,  # N.B. Does not need to be URL-encoded.
+            "findmember_btn": "Search...",
+            "adminpw": self._list_password,
+        }
+        response = self._session.post(endpoint, payload)
+        if response.status_code != 200:
+            raise RuntimeError(
+                f"Unexpected error when fetching member settings for {email}: {response.status_code}"
+            )
+        settings = extract_member_settings(response.content.decode())
+        for setting in settings:
+            if setting.email == email:
+                return setting
+        # Member not found.
+        return None

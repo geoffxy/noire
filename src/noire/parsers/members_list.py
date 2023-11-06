@@ -1,7 +1,13 @@
 from bs4 import BeautifulSoup
 from typing import List
+from urllib.parse import unquote
 
-from noire.models.membership import BulkAddResults, MemberError, BulkRemoveResults
+from noire.models.membership import (
+    BulkAddResults,
+    MemberError,
+    BulkRemoveResults,
+    MemberSettings,
+)
 
 
 def extract_member_emails(raw_html: str) -> List[str]:
@@ -79,6 +85,38 @@ def extract_remove_results(raw_html: str) -> BulkRemoveResults:
         removed = []
 
     return BulkRemoveResults(removed=removed)
+
+
+def extract_member_settings(raw_html: str) -> List[MemberSettings]:
+    soup = BeautifulSoup(raw_html, "html.parser")
+    member_table = soup.find("table", {"width": "90%", "border": "2"})
+    rows = member_table.find_all("tr")  # type: ignore
+    if len(rows) < 3:
+        # No members found.
+        return []
+
+    member_settings: List[MemberSettings] = []
+    for row in rows[2:]:
+        checkboxes = row.find_all("input", type="CHECKBOX")
+
+        setting_enabled = {}
+        emails = []
+
+        for checkbox in checkboxes:
+            raw_setting_name = checkbox["name"]
+            encoded_email, setting_name = raw_setting_name.split("_")
+            emails.append(unquote(encoded_email))
+            setting_enabled[setting_name] = checkbox["value"] == "on"
+
+        # Sanity check.
+        if len(emails) == 0 or not all(email == emails[0] for email in emails):
+            raise RuntimeError("Unexpected member settings page format.")
+
+        member_settings.append(
+            MemberSettings.from_html_values(emails[0], setting_enabled)
+        )
+
+    return member_settings
 
 
 def _extract_from_malformed_li(raw_content: str) -> List[str]:
