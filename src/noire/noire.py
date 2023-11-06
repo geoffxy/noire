@@ -3,7 +3,7 @@ from typing import List, Optional
 
 from noire.constants import (
     LOG_IN_URL_TEMPLATE,
-    GET_MEMBERS_LIST_URL_TEMPLATE,
+    MEMBERS_LIST_URL_TEMPLATE,
     MODERATION_REQUESTS_URL_TEMPLATE,
     MODERATION_DETAILS_URL_TEMPLATE,
     ADD_MEMBERS_URL_TEMPLATE,
@@ -74,7 +74,7 @@ class Noire:
         """
         Retrieves all emails that are subscribed to the list.
         """
-        get_url = GET_MEMBERS_LIST_URL_TEMPLATE.format(
+        get_url = MEMBERS_LIST_URL_TEMPLATE.format(
             list_name=self._list_name, mailman_base_url=self._mailman_base_url
         )
         response = self._session.get(get_url)
@@ -226,6 +226,25 @@ class Noire:
         payload = {
             "adminpw": self._list_password,
             "memberlist": "\n".join(emails),
+        }
+        response = self._session.post(endpoint, payload)
+        return response.status_code == 200
+
+    def bulk_set_moderation_flag(self, should_moderate: bool) -> bool:
+        """
+        Use this to set all members' "moderation bit".
+
+        If `should_moderate` is set to `True`, all list members will have their
+        posts held for moderation. If it is set to False, everyone is able to
+        post without their email being held for moderation.
+        """
+        endpoint = MEMBERS_LIST_URL_TEMPLATE.format(
+            mailman_base_url=self._mailman_base_url, list_name=self._list_name
+        )
+        payload = {
+            "allmodbit_val": 1 if should_moderate else 0,
+            "allmodbit_btn": "Set",
+            "adminpw": self._list_password,
         }
         response = self._session.post(endpoint, payload)
         return response.status_code == 200
