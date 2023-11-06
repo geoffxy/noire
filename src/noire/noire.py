@@ -274,3 +274,26 @@ class Noire:
                 return setting
         # Member not found.
         return None
+
+    def set_member_subscription_settings(self, settings: List[MemberSettings]) -> bool:
+        """
+        Updates members' subscription settings to the provided settings. Note
+        that you can update multiple members' settings at once with this call.
+        """
+        if len(settings) == 0:
+            return True
+
+        endpoint = MEMBERS_LIST_URL_TEMPLATE.format(
+            mailman_base_url=self._mailman_base_url, list_name=self._list_name
+        )
+        # We use a list with tuples here because the payload can have duplicate
+        # keys (expected by Mailman).
+        payload = [
+            ("setmemberopts_btn", "Submit Your Changes"),
+            ("adminpw", self._list_password),
+        ]
+        for setting in settings:
+            for k, v in setting.to_html_values().items():
+                payload.append((k, v))
+        response = self._session.post(endpoint, payload)
+        return response.status_code == 200

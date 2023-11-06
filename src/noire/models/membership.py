@@ -1,4 +1,5 @@
 from typing import List, Optional, Dict
+from urllib.parse import quote
 from pydantic import BaseModel
 
 
@@ -53,3 +54,26 @@ class MemberSettings(BaseModel):
             digest=setting_enabled["digest"],
             plain=setting_enabled["plain"],
         )
+
+    def to_html_values(self) -> Dict[str, str]:
+        email = quote(self.email)
+        values = {
+            "user": email,
+        }
+        if self.moderated:
+            values[f"{email}_mod"] = "on"
+        if self.hide:
+            values[f"{email}_hide"] = "on"
+        if self.no_mail:
+            values[f"{email}_nomail"] = "on"
+        if self.ack:
+            values[f"{email}_ack"] = "on"
+        if self.not_me_too:
+            values[f"{email}_notmetoo"] = "on"
+        if self.no_dupes:
+            values[f"{email}_nodupes"] = "on"
+        if self.digest:
+            values[f"{email}_digest"] = "on"
+        if self.plain:
+            values[f"{email}_plain"] = "on"
+        return values
