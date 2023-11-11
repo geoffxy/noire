@@ -318,3 +318,19 @@ class Noire:
         }
         response = self._session.post(endpoint, payload)
         return response.status_code == 200
+
+    def set_default_member_moderation(self, should_moderate: bool) -> bool:
+        """
+        Sets the "default_member_moderation" flag. If set to true, new members
+        will have their moderation bit set (posts will be held for moderation).
+        """
+        endpoint = SENDER_PRIVACY_URL_TEMPLATE.format(
+            mailman_base_url=self._mailman_base_url, list_name=self._list_name
+        )
+        payload = {
+            "adminpw": self._list_password,
+            "default_member_moderation": 1 if should_moderate else 0,
+            "submit": "Submit Your Changes",
+        }
+        response = self._session.post(endpoint, payload)
+        return response.status_code == 200
