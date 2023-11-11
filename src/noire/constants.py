@@ -8,3 +8,4 @@ MODERATION_DETAILS_URL_TEMPLATE = (
 ADD_MEMBERS_URL_TEMPLATE = "{mailman_base_url}/admin/{list_name}/members/add"
 REMOVE_MEMBERS_URL_TEMPLATE = "{mailman_base_url}/admin/{list_name}/members/remove"
 SYNC_MEMBERS_URL_TEMPLATE = "{mailman_base_url}/admin/{list_name}/members/sync"
+SENDER_PRIVACY_URL_TEMPLATE = "{mailman_base_url}/admin/{list_name}/privacy/sender"

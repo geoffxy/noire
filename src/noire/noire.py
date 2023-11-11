@@ -9,6 +9,7 @@ from noire.constants import (
     ADD_MEMBERS_URL_TEMPLATE,
     REMOVE_MEMBERS_URL_TEMPLATE,
     SYNC_MEMBERS_URL_TEMPLATE,
+    SENDER_PRIVACY_URL_TEMPLATE,
 )
 from noire.models.membership import BulkAddResults, BulkRemoveResults, MemberSettings
 from noire.models.moderation import (
@@ -295,5 +296,25 @@ class Noire:
         for setting in settings:
             for k, v in setting.to_html_values().items():
                 payload.append((k, v))
+        response = self._session.post(endpoint, payload)
+        return response.status_code == 200
+
+    def set_accept_these_nonmembers(self, emails: List[str]) -> bool:
+        """
+        Sets the "accept_these_nonmembers" setting with the provided emails. The
+        list will accept messages sent from those email addresses without
+        holding them for moderation (as long as those members are also not
+        subscribed to the list).
+        """
+        if len(emails) == 0:
+            return True
+
+        endpoint = SENDER_PRIVACY_URL_TEMPLATE.format(
+            mailman_base_url=self._mailman_base_url, list_name=self._list_name
+        )
+        payload = {
+            "adminpw": self._list_password,
+            "accept_these_nonmembers": "\n".join(emails),
+        }
         response = self._session.post(endpoint, payload)
         return response.status_code == 200
