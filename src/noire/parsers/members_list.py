@@ -104,7 +104,9 @@ def extract_member_settings(raw_html: str) -> List[MemberSettings]:
 
         for checkbox in checkboxes:
             raw_setting_name = checkbox["name"]
-            encoded_email, setting_name = raw_setting_name.split("_")
+            parts = raw_setting_name.split("_")
+            setting_name = parts[-1]
+            encoded_email = "_".join(parts[:-1])  # Some emails may contain "_".
             emails.append(unquote(encoded_email))
             setting_enabled[setting_name] = checkbox["value"] == "on"
 
