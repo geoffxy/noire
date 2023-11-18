@@ -13,7 +13,8 @@ from noire.models.membership import (
 def extract_member_emails(raw_html: str) -> List[str]:
     """
     Extracts the member emails that appear on `/mailman/admin/<list name>/members`
-    from the raw HTML.
+    from the raw HTML. Note that this may not be an exhaustive list of members
+    because the Mailman view is paginated.
     """
     table_index = 4
     member_emails: List[str] = []
@@ -119,6 +120,21 @@ def extract_member_settings(raw_html: str) -> List[MemberSettings]:
         )
 
     return member_settings
+
+
+def extract_emails_from_roster(raw_html: str) -> List[str]:
+    parsed_emails = []
+    soup = BeautifulSoup(raw_html, "html.parser")
+    member_lists = soup.find_all("ul")
+    for member_list in member_lists:
+        email_wraps = member_list.find_all("a")
+        for a in email_wraps:
+            escaped_email = a.decode_contents()
+            email_parts = escaped_email.split(" ")
+            if email_parts[1] != "at":
+                continue
+            parsed_emails.append(f"{email_parts[0]}@{email_parts[2]}")
+    return parsed_emails
 
 
 def _extract_from_malformed_li(raw_content: str) -> List[str]:

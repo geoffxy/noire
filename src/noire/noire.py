@@ -10,6 +10,8 @@ from noire.constants import (
     REMOVE_MEMBERS_URL_TEMPLATE,
     SYNC_MEMBERS_URL_TEMPLATE,
     SENDER_PRIVACY_URL_TEMPLATE,
+    GENERAL_SETTINGS_URL_TEMPLATE,
+    ROSTER_URL_TEMPLATE,
 )
 from noire.models.membership import BulkAddResults, BulkRemoveResults, MemberSettings
 from noire.models.moderation import (
@@ -18,7 +20,7 @@ from noire.models.moderation import (
     ModerationAction,
 )
 from noire.parsers.members_list import (
-    extract_member_emails,
+    extract_emails_from_roster,
     extract_add_results,
     extract_remove_results,
     extract_member_settings,
@@ -76,7 +78,7 @@ class Noire:
         """
         Retrieves all emails that are subscribed to the list.
         """
-        get_url = MEMBERS_LIST_URL_TEMPLATE.format(
+        get_url = ROSTER_URL_TEMPLATE.format(
             list_name=self._list_name, mailman_base_url=self._mailman_base_url
         )
         response = self._session.get(get_url)
@@ -84,8 +86,7 @@ class Noire:
             raise RuntimeError(
                 f"Unexpected error when fetching member emails: {response.status_code}"
             )
-        # TODO: Handle pagination for large lists.
-        return extract_member_emails(response.content.decode())
+        return extract_emails_from_roster(response.content.decode())
 
     def get_moderation_requests(self) -> List[ModerationRequest]:
         """
@@ -276,6 +277,43 @@ class Noire:
         # Member not found.
         return None
 
+    def bulk_fetch_member_subscription_settings(
+        self, emails: Optional[List[str]] = None, restore_chunk_size_to: int = 30
+    ) -> List[MemberSettings]:
+        """
+        Retrieves member subscription settings in bulk. If `emails` is None,
+        this will return all members' settings.
+
+        This method will modify the "admin_member_chunksize" configuration (the
+        number of members to show on a page). It will reset this value to the
+        specified value.
+        """
+        # 1. Count the number of members subscribed.
+        all_members = self.get_member_emails()
+
+        # 2. Set the chunk size appropriately so all member settings appear together.
+        self._set_chunk_size(len(all_members) + 1)
+
+        # 3. Bulk fetch all member settings.
+        endpoint = MEMBERS_LIST_URL_TEMPLATE.format(
+            mailman_base_url=self._mailman_base_url, list_name=self._list_name
+        )
+        response = self._session.get(endpoint)
+        if response.status_code != 200:
+            raise RuntimeError(
+                f"Unexpected error when fetching member settings: {response.status_code}"
+            )
+        all_settings = extract_member_settings(response.content.decode())
+
+        # 4. Reset the chunk size to a reasonable value.
+        self._set_chunk_size(restore_chunk_size_to)
+
+        # 5. Keep the relevant entries only.
+        if emails is None:
+            return all_settings
+        else:
+            return [setting for setting in all_settings if setting.email in emails]
+
     def set_member_subscription_settings(self, settings: List[MemberSettings]) -> bool:
         """
         Updates members' subscription settings to the provided settings. Note
@@ -333,4 +371,16 @@ class Noire:
             "submit": "Submit Your Changes",
         }
         response = self._session.post(endpoint, payload)
+        return response.status_code == 200
+
+    def _set_chunk_size(self, chunk_size: int) -> bool:
+        chunk_size_endpoint = GENERAL_SETTINGS_URL_TEMPLATE.format(
+            mailman_base_url=self._mailman_base_url, list_name=self._list_name
+        )
+        payload = {
+            "admin_member_chunksize": chunk_size,
+            "submit": "Submit Your Changes",
+            "adminpw": self._list_password,
+        }
+        response = self._session.post(chunk_size_endpoint, payload)
         return response.status_code == 200
