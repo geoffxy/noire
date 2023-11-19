@@ -29,6 +29,7 @@ from noire.parsers.moderation import (
     extract_moderation_requests,
     extract_moderation_post_details,
 )
+from noire.parsers.settings import extract_chunk_size_setting
 
 
 class Noire:
@@ -278,21 +279,21 @@ class Noire:
         return None
 
     def bulk_fetch_member_subscription_settings(
-        self, emails: Optional[List[str]] = None, restore_chunk_size_to: int = 30
+        self, emails: Optional[List[str]] = None
     ) -> List[MemberSettings]:
         """
         Retrieves member subscription settings in bulk. If `emails` is None,
         this will return all members' settings.
 
         This method will modify the "admin_member_chunksize" configuration (the
-        number of members to show on a page). It will reset this value to the
-        specified value.
+        number of members to show on a page). It will reset this value to its
+        previous value after completing.
         """
         # 1. Count the number of members subscribed.
         all_members = self.get_member_emails()
 
         # 2. Set the chunk size appropriately so all member settings appear together.
-        self._set_chunk_size(len(all_members) + 1)
+        current_chunk_size = self._set_chunk_size(len(all_members) + 1)
 
         # 3. Bulk fetch all member settings.
         endpoint = MEMBERS_LIST_URL_TEMPLATE.format(
@@ -305,8 +306,8 @@ class Noire:
             )
         all_settings = extract_member_settings(response.content.decode())
 
-        # 4. Reset the chunk size to a reasonable value.
-        self._set_chunk_size(restore_chunk_size_to)
+        # 4. Reset the chunk size.
+        self._set_chunk_size(current_chunk_size)
 
         # 5. Keep the relevant entries only.
         if emails is None:
@@ -373,14 +374,24 @@ class Noire:
         response = self._session.post(endpoint, payload)
         return response.status_code == 200
 
-    def _set_chunk_size(self, chunk_size: int) -> bool:
+    def _set_chunk_size(self, chunk_size: int) -> int:
+        """
+        Sets the chunk size to the given value and returns the previously used
+        chunk size.
+        """
         chunk_size_endpoint = GENERAL_SETTINGS_URL_TEMPLATE.format(
             mailman_base_url=self._mailman_base_url, list_name=self._list_name
         )
+        response = self._session.get(chunk_size_endpoint)
+        if response.status_code != 200:
+            raise RuntimeError("Failed to fetch current chunk size.")
+        current_chunk_size = extract_chunk_size_setting(response.content.decode())
         payload = {
             "admin_member_chunksize": chunk_size,
             "submit": "Submit Your Changes",
             "adminpw": self._list_password,
         }
         response = self._session.post(chunk_size_endpoint, payload)
-        return response.status_code == 200
+        if response.status_code != 200:
+            raise RuntimeError("Failed to set chunk size.")
+        return current_chunk_size
