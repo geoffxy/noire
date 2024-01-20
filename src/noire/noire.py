@@ -19,6 +19,7 @@ from noire.models.moderation import (
     ModerationRequestDetails,
     ModerationAction,
 )
+from noire.models.settings import GeneralOptions, GeneralOptionsChanges
 from noire.parsers.members_list import (
     extract_emails_from_roster,
     extract_add_results,
@@ -29,7 +30,7 @@ from noire.parsers.moderation import (
     extract_moderation_requests,
     extract_moderation_post_details,
 )
-from noire.parsers.settings import extract_chunk_size_setting
+from noire.parsers.settings import extract_chunk_size_setting, extract_general_options
 
 
 class Noire:
@@ -371,6 +372,45 @@ class Noire:
             "default_member_moderation": 1 if should_moderate else 0,
             "submit": "Submit Your Changes",
         }
+        response = self._session.post(endpoint, payload)
+        return response.status_code == 200
+
+    def get_general_options(self) -> GeneralOptions:
+        """
+        Fetches the current general options settings.
+        """
+        endpoint = GENERAL_SETTINGS_URL_TEMPLATE.format(
+            mailman_base_url=self._mailman_base_url, list_name=self._list_name
+        )
+        response = self._session.get(endpoint)
+        if response.status_code != 200:
+            raise RuntimeError("Failed to fetch the general options.")
+        return extract_general_options(response.content.decode())
+
+    def set_general_options(self, changes: GeneralOptionsChanges) -> bool:
+        """
+        Modifies the general options.
+        """
+        payload = {
+            "submit": "Submit Your Changes",
+            "adminpw": self._list_password,
+        }
+        for field, field_type in changes.model_fields.items():
+            value = getattr(changes, field)
+            if value is None:
+                continue
+            if field_type.annotation is Optional[bool]:
+                payload[field] = "1" if value else "0"
+            elif field_type.annotation is Optional[int] or field_type is Optional[str]:
+                payload[field] = str(value)
+            else:
+                raise NotImplementedError(
+                    f"Unsupported type {field_type} for field {field}"
+                )
+
+        endpoint = GENERAL_SETTINGS_URL_TEMPLATE.format(
+            mailman_base_url=self._mailman_base_url, list_name=self._list_name
+        )
         response = self._session.post(endpoint, payload)
         return response.status_code == 200
 
