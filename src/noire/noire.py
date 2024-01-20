@@ -401,7 +401,10 @@ class Noire:
                 continue
             if field_type.annotation is Optional[bool]:
                 payload[field] = "1" if value else "0"
-            elif field_type.annotation is Optional[int] or field_type is Optional[str]:
+            elif (
+                field_type.annotation is Optional[int]
+                or field_type.annotation is Optional[str]
+            ):
                 payload[field] = str(value)
             else:
                 raise NotImplementedError(
