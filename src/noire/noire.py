@@ -30,7 +30,7 @@ from noire.parsers.moderation import (
     extract_moderation_requests,
     extract_moderation_post_details,
 )
-from noire.parsers.settings import extract_chunk_size_setting, extract_general_options
+from noire.parsers.settings import extract_general_options
 
 
 class Noire:
@@ -419,19 +419,10 @@ class Noire:
         Sets the chunk size to the given value and returns the previously used
         chunk size.
         """
-        chunk_size_endpoint = GENERAL_SETTINGS_URL_TEMPLATE.format(
-            mailman_base_url=self._mailman_base_url, list_name=self._list_name
+        options = self.get_general_options()
+        succeeded = self.set_general_options(
+            GeneralOptionsChanges(admin_member_chunksize=chunk_size)
         )
-        response = self._session.get(chunk_size_endpoint)
-        if response.status_code != 200:
-            raise RuntimeError("Failed to fetch current chunk size.")
-        current_chunk_size = extract_chunk_size_setting(response.content.decode())
-        payload = {
-            "admin_member_chunksize": chunk_size,
-            "submit": "Submit Your Changes",
-            "adminpw": self._list_password,
-        }
-        response = self._session.post(chunk_size_endpoint, payload)
-        if response.status_code != 200:
+        if not succeeded:
             raise RuntimeError("Failed to set chunk size.")
-        return current_chunk_size
+        return options.admin_member_chunksize
